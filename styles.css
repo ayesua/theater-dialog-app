@@ -213,6 +213,79 @@ body {
     line-height: 1.4;
 }
 
+/* Saved Scripts Bar */
+.saved-scripts-container {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 18px;
+}
+
+.saved-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.clear-saved-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.clear-saved-btn:hover {
+    color: var(--danger);
+}
+
+.saved-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.saved-script-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.saved-script-chip:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.saved-script-chip .chip-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.saved-script-chip .chip-lines {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: rgba(15, 23, 42, 0.8);
+    padding: 1px 6px;
+    border-radius: 10px;
+}
+
 /* Rehearsal Mode Toggle Badges */
 .mode-toggle-group {
     display: flex;

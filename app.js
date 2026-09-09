@@ -60,7 +60,8 @@ const I18N = {
         genderVoice: 'Filtro de Voz / Género:',
         modeNormal: 'Modo Lectura Guion',
         modeBlind: 'Modo Memoria / Ocultar Mi Línea',
-        speedLabel: 'Velocidad Lectura IA:'
+        speedLabel: 'Velocidad Lectura IA:',
+        savedScriptsTitle: 'Tus Guiones Guardados:'
     },
     'en-US': {
         changeScript: 'Change Script',
@@ -91,7 +92,8 @@ const I18N = {
         genderVoice: 'Voice Filter / Gender:',
         modeNormal: 'Normal Script Mode',
         modeBlind: 'Memory / Hide My Line Mode',
-        speedLabel: 'AI Speech Speed:'
+        speedLabel: 'AI Speech Speed:',
+        savedScriptsTitle: 'Your Saved Scripts:'
     }
 };
 
@@ -153,6 +155,11 @@ class StageCueApp {
         this.voiceAssignmentList = document.getElementById('voiceAssignmentList');
         this.btnStartPlay = document.getElementById('btnStartPlay');
         this.btnBackToInput = document.getElementById('btnBackToInput');
+
+        // Saved scripts DOM
+        this.savedScriptsContainer = document.getElementById('savedScriptsContainer');
+        this.savedScriptsList = document.getElementById('savedScriptsList');
+        this.btnClearSaved = document.getElementById('btnClearSaved');
 
         // Mode chips & sliders
         this.chipNormalMode = document.getElementById('chipNormalMode');
@@ -260,6 +267,77 @@ class StageCueApp {
         this.btnPromptHint.addEventListener('click', () => this.giveHint());
         this.btnSkipLine.addEventListener('click', () => this.advanceLine());
         this.btnEndRehearsal.addEventListener('click', () => this.endRehearsal());
+
+        // Clear saved scripts
+        if (this.btnClearSaved) {
+            this.btnClearSaved.addEventListener('click', () => {
+                if (confirm(this.currentLang.startsWith('es') ? '¿Eliminar todos los guiones guardados?' : 'Clear all saved scripts?')) {
+                    localStorage.removeItem('stagecue_saved_scripts');
+                    this.renderSavedScripts();
+                }
+            });
+        }
+
+        // Render saved scripts on launch
+        this.renderSavedScripts();
+    }
+
+    getSavedScripts() {
+        try {
+            return JSON.parse(localStorage.getItem('stagecue_saved_scripts') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    saveScriptToStorage(name, text, lineCount) {
+        if (!text || !text.trim()) return;
+        let list = this.getSavedScripts();
+
+        // Check if identical already exists
+        list = list.filter(item => item.text !== text);
+        
+        list.unshift({
+            name: name || (text.slice(0, 24).trim() + '...'),
+            text: text,
+            lineCount: lineCount || text.split('\n').length,
+            savedAt: new Date().toLocaleDateString()
+        });
+
+        // Cap at 10 saved scripts
+        list = list.slice(0, 10);
+        localStorage.setItem('stagecue_saved_scripts', JSON.stringify(list));
+        this.renderSavedScripts();
+    }
+
+    renderSavedScripts() {
+        if (!this.savedScriptsContainer || !this.savedScriptsList) return;
+        const list = this.getSavedScripts();
+
+        if (list.length === 0) {
+            this.savedScriptsContainer.style.display = 'none';
+            return;
+        }
+
+        this.savedScriptsContainer.style.display = 'block';
+        this.savedScriptsList.innerHTML = '';
+
+        list.forEach((item, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'saved-script-chip';
+            chip.innerHTML = `
+                <i class="fa-solid fa-scroll"></i>
+                <span class="chip-name" title="${item.name}">${item.name}</span>
+                <span class="chip-lines">${item.lineCount} l.</span>
+            `;
+            chip.addEventListener('click', () => {
+                this.scriptText.value = item.text;
+                // Visual feedback
+                document.querySelectorAll('.saved-script-chip').forEach(c => c.style.borderColor = 'var(--card-border)');
+                chip.style.borderColor = 'var(--accent)';
+            });
+            this.savedScriptsList.appendChild(chip);
+        });
     }
 
     async handleFileUpload(file) {
@@ -286,6 +364,8 @@ class StageCueApp {
             if (extractedText && extractedText.trim()) {
                 this.scriptText.value = extractedText;
                 this.fileStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--success)"></i> ${file.name} cargado correctamente!`;
+                // Save to local storage
+                this.saveScriptToStorage(file.name, extractedText, extractedText.split('\n').length);
             } else {
                 throw new Error("No se pudo extraer texto del archivo.");
             }
@@ -363,6 +443,11 @@ class StageCueApp {
             alert(this.currentLang.startsWith('es') ? 'No se detectaron personajes. Asegúrate de iniciar cada línea con NOMBRE:' : 'No character dialogs detected! Make sure lines start with CHARACTER NAME:');
             return;
         }
+
+        // Automatically save to local history
+        const firstLine = text.split('\n')[0].replace(/[:.-].*$/, '').trim();
+        const scriptTitle = firstLine ? `Guion (${firstLine})` : `Guion ${new Date().toLocaleTimeString()}`;
+        this.saveScriptToStorage(scriptTitle, text, this.parsedData.lines.length);
 
         this.renderSetupView();
         this.showView('setup');

@@ -53,6 +53,17 @@
                     <div id="fileStatus" class="file-status" style="display: none;"></div>
                 </div>
 
+                <!-- Saved Scripts Bar -->
+                <div class="saved-scripts-container" id="savedScriptsContainer" style="display: none;">
+                    <div class="saved-header">
+                        <span><i class="fa-solid fa-clock-rotate-left"></i> <span data-i18n="savedScriptsTitle">Tus Guiones Guardados:</span></span>
+                        <button class="clear-saved-btn" id="btnClearSaved" title="Borrar historial"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    <div class="saved-chips" id="savedScriptsList">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
                 <div class="sample-scripts">
                     <span><i class="fa-solid fa-book-open"></i> <span data-i18n="loadSample">O carga un ejemplo:</span></span>
                     <button class="chip-btn" id="sampleDonJuan">Don Juan Tenorio (Español)</button>
