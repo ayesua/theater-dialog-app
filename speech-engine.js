@@ -25,11 +25,17 @@ export class SpeechEngine {
         if (!this.synth) return;
         const load = () => {
             this.voices = this.synth.getVoices();
+            if (this.onVoicesLoaded) {
+                this.onVoicesLoaded(this.voices);
+            }
         };
         load();
         if (this.synth.onvoiceschanged !== undefined) {
             this.synth.onvoiceschanged = load;
         }
+        // Mobile browsers (Chrome Android & Safari iOS) often load voices asynchronously
+        setTimeout(load, 500);
+        setTimeout(load, 1500);
     }
 
     getVoices(filterLang = null) {
@@ -40,14 +46,14 @@ export class SpeechEngine {
         let pool = this.voices;
         if (filterLang) {
             const prefix = filterLang.split('-')[0].toLowerCase();
-            const filtered = this.voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
+            const filtered = this.voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(prefix));
             if (filtered.length > 0) pool = filtered;
         }
 
-        // Sort pool so Natural / Neural high quality voices appear first
+        // Sort pool so Natural / Neural / Enhanced / Google / Apple high quality mobile voices appear first
         return pool.sort((a, b) => {
-            const isANatural = /natural|neural|online|google|microsoft/i.test(a.name);
-            const isBNatural = /natural|neural|online|google|microsoft/i.test(b.name);
+            const isANatural = /natural|neural|online|google|samsung|enhanced|premium|siri/i.test(a.name);
+            const isBNatural = /natural|neural|online|google|samsung|enhanced|premium|siri/i.test(b.name);
             if (isANatural && !isBNatural) return -1;
             if (!isANatural && isBNatural) return 1;
             return a.name.localeCompare(b.name);

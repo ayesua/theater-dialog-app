@@ -121,6 +121,13 @@ class StageCueApp {
         this.initDOM();
         this.bindEvents();
         this.updateLanguage('es-ES');
+
+        // Refresh voices when mobile browser finishes loading its voice list
+        this.speechEngine.onVoicesLoaded = () => {
+            if (this.parsedData.characters && this.parsedData.characters.length > 0) {
+                this.renderVoiceAssignments();
+            }
+        };
     }
 
     initDOM() {
@@ -530,11 +537,15 @@ class StageCueApp {
 
             // Find best default voice: prioritize Natural + gender match
             let recommendedVoiceName = '';
+            const naturalKeywords = ['natural', 'neural', 'online', 'google', 'microsoft', 'enhanced', 'premium', 'siri', 'samsung'];
+            const femaleKeywords = ['female', 'femenin', 'mujer', 'daria', 'paloma', 'catalina', 'esmeralda', 'salome', 'jimena', 'marta', 'sofia', 'carmen', 'lucia', 'elena', 'camila', 'lorena', 'renata', 'silvia', 'yolanda', 'helena', 'sabina', 'zira', 'hilda', 'monica', 'victoria', 'laura', 'samantha', 'jenny', 'aria', 'ana', 'mia', 'esperanza', 'marisol', 'francisca', 'paulina', 'penelope'];
+            const maleKeywords = ['male', 'masculin', 'hombre', 'pablo', 'raul', 'jorge', 'david', 'mark', 'george', 'alonso', 'alvaro', 'mateo', 'tomas', 'nicolas', 'gonzalo', 'guillermo', 'justin', 'guy', 'ryan', 'stefan', 'enrique', 'carlos', 'diego', 'javier', 'miguel', 'antonio', 'sergio'];
+
             for (const v of voices) {
                 const vLower = v.name.toLowerCase();
-                const isVoiceNatural = /natural|neural|online|google|microsoft/i.test(v.name);
-                const isVoiceFemale = ['female', 'daria', 'paloma', 'catalina', 'esmeralda', 'salome', 'jimena', 'marta', 'sofia', 'carmen', 'lucia', 'elena', 'camila', 'lorena', 'renata', 'silvia', 'yolanda', 'helena', 'sabina', 'zira', 'hilda', 'monica', 'victoria', 'laura', 'samantha', 'jenny', 'aria', 'ana'].some(kw => vLower.includes(kw));
-                const isVoiceMale = ['male', 'pablo', 'raul', 'jorge', 'david', 'mark', 'george', 'alonso', 'alvaro', 'mateo', 'tomas', 'nicolas', 'gonzalo', 'guillermo', 'justin', 'guy', 'ryan', 'stefan'].some(kw => vLower.includes(kw));
+                const isVoiceNatural = naturalKeywords.some(kw => vLower.includes(kw));
+                const isVoiceFemale = femaleKeywords.some(kw => vLower.includes(kw));
+                const isVoiceMale = maleKeywords.some(kw => vLower.includes(kw));
 
                 if (isCharacterFemale && isVoiceFemale && isVoiceNatural) {
                     recommendedVoiceName = v.name;
@@ -545,9 +556,23 @@ class StageCueApp {
                 }
             }
 
+            // Secondary fallback: gender match even if not strictly tagged "natural"
+            if (!recommendedVoiceName) {
+                for (const v of voices) {
+                    const vLower = v.name.toLowerCase();
+                    if (isCharacterFemale && femaleKeywords.some(kw => vLower.includes(kw))) {
+                        recommendedVoiceName = v.name;
+                        break;
+                    } else if (isCharacterMale && maleKeywords.some(kw => vLower.includes(kw))) {
+                        recommendedVoiceName = v.name;
+                        break;
+                    }
+                }
+            }
+
             // Fallback to first natural voice if no strict gender match
             if (!recommendedVoiceName) {
-                const firstNat = voices.find(v => /natural|neural|online|google|microsoft/i.test(v.name));
+                const firstNat = voices.find(v => naturalKeywords.some(kw => v.name.toLowerCase().includes(kw)));
                 if (firstNat) recommendedVoiceName = firstNat.name;
             }
 
@@ -560,9 +585,6 @@ class StageCueApp {
             voices.forEach(v => {
                 const nameLower = v.name.toLowerCase();
                 let genderTag = '';
-                const femaleKeywords = ['female', 'helena', 'sabina', 'zira', 'hilda', 'daria', 'monica', 'paloma', 'victoria', 'laura', 'samantha', 'mia', 'esmeralda', 'salome', 'jimena', 'marta', 'sofia', 'carmen', 'lucia', 'elena', 'camila', 'lorena', 'renata', 'silvia', 'yolanda', 'catalina', 'jenny', 'aria', 'ana'];
-                const maleKeywords = ['male', 'pablo', 'raul', 'jorge', 'david', 'mark', 'george', 'alonso', 'alvaro', 'mateo', 'tomas', 'nicolas', 'gonzalo', 'guillermo', 'justin', 'guy', 'ryan', 'stefan'];
-
                 if (femaleKeywords.some(kw => nameLower.includes(kw))) {
                     genderTag = ' 👧 (Femenina / Female)';
                 } else if (maleKeywords.some(kw => nameLower.includes(kw))) {
@@ -570,7 +592,7 @@ class StageCueApp {
                 }
 
                 let naturalTag = '';
-                if (/natural|neural|online|google|microsoft/i.test(v.name)) {
+                if (naturalKeywords.some(kw => nameLower.includes(kw))) {
                     naturalTag = ' 🌟 [Fluida / Natural]';
                 }
 
