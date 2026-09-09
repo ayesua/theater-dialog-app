@@ -105,6 +105,12 @@ class StageCueApp {
         this.isBlindMode = false;
         this.speechRate = 1.0;
 
+        // Stats tracking
+        this.userLinesCount = 0;
+        this.userLinesCompleted = 0;
+        this.hintsCount = 0;
+        this.rehearsalStartTime = 0;
+
         // Rehearsal state
         this.currentLineIndex = -1;
         this.isPaused = false;
@@ -121,6 +127,18 @@ class StageCueApp {
         this.viewSetup = document.getElementById('viewSetup');
         this.viewRehearsal = document.getElementById('viewRehearsal');
         this.headerActions = document.getElementById('headerActions');
+
+        // Progress bar
+        this.progressBarFill = document.getElementById('progressBarFill');
+        this.progressText = document.getElementById('progressText');
+
+        // Modal
+        this.summaryModal = document.getElementById('summaryModal');
+        this.statAccuracy = document.getElementById('statAccuracy');
+        this.statLinesSpoken = document.getElementById('statLinesSpoken');
+        this.statHintsUsed = document.getElementById('statHintsUsed');
+        this.btnModalRestart = document.getElementById('btnModalRestart');
+        this.btnModalBack = document.getElementById('btnModalBack');
 
         // Upload DOM
         this.fileInput = document.getElementById('fileInput');
@@ -426,15 +444,36 @@ class StageCueApp {
         this.renderTeleprompterLines();
         this.showView('rehearsal');
 
+        // Reset stats
+        this.userLinesCount = this.parsedData.lines.filter(l => l.character === this.selectedUserCharacter).length;
+        this.userLinesCompleted = 0;
+        this.hintsCount = 0;
+        this.rehearsalStartTime = Date.now();
+
         this.rehearsalActive = true;
         this.isPaused = false;
         this.currentLineIndex = 0;
+        this.updateProgressBar();
 
         setTimeout(() => {
             if (this.rehearsalActive && !this.isPaused) {
                 this.processCurrentLine();
             }
         }, 1000);
+    }
+
+    updateProgressBar() {
+        if (!this.parsedData.lines.length) return;
+        const total = this.parsedData.lines.length;
+        const current = Math.min(this.currentLineIndex + 1, total);
+        const percent = Math.round((current / total) * 100);
+
+        if (this.progressBarFill) {
+            this.progressBarFill.style.width = `${percent}%`;
+        }
+        if (this.progressText) {
+            this.progressText.textContent = `${this.currentLang.startsWith('es') ? 'Línea' : 'Line'} ${current} / ${total} (${percent}%)`;
+        }
     }
 
     renderTeleprompterLines() {
@@ -470,9 +509,10 @@ class StageCueApp {
     processCurrentLine() {
         if (!this.rehearsalActive || this.isPaused) return;
 
+        this.updateProgressBar();
+
         if (this.currentLineIndex >= this.parsedData.lines.length) {
-            this.endRehearsal('setup');
-            alert(this.currentLang.startsWith('es') ? '¡Fin de la escena! ¡Excelente ensayo!' : "End of scene reached! Great job rehearsing!");
+            this.showSummaryModal();
             return;
         }
 
@@ -526,6 +566,7 @@ class StageCueApp {
                 this.transcriptLive.textContent = `"${result.combined}"`;
                 
                 if (this.speechEngine.checkTextMatch(result.combined, targetText)) {
+                    this.userLinesCompleted++;
                     this.speechEngine.stopListening();
                     this.setTurnStatus('listening', this.t('matched'));
                     this.advanceLineWithDelay();
@@ -573,10 +614,28 @@ class StageCueApp {
 
     giveHint() {
         if (!this.rehearsalActive) return;
+        this.hintsCount++;
         const lineObj = this.parsedData.lines[this.currentLineIndex];
         if (lineObj) {
             const firstWords = lineObj.text.split(' ').slice(0, 4).join(' ');
             alert(`${lineObj.character}: "${firstWords}..."`);
+        }
+    }
+
+    showSummaryModal() {
+        this.rehearsalActive = false;
+        this.speechEngine.stopSpeaking();
+        this.speechEngine.stopListening();
+
+        const totalUser = Math.max(1, this.userLinesCount);
+        const accuracy = Math.round(Math.max(0, ((this.userLinesCompleted - (this.hintsCount * 0.5)) / totalUser) * 100));
+
+        if (this.statAccuracy) this.statAccuracy.textContent = `${Math.min(100, Math.max(10, accuracy))}%`;
+        if (this.statLinesSpoken) this.statLinesSpoken.textContent = `${this.userLinesCompleted} / ${this.userLinesCount}`;
+        if (this.statHintsUsed) this.statHintsUsed.textContent = `${this.hintsCount}`;
+
+        if (this.summaryModal) {
+            this.summaryModal.style.display = 'flex';
         }
     }
 
@@ -602,10 +661,25 @@ class StageCueApp {
         this.rehearsalActive = false;
         this.speechEngine.stopSpeaking();
         this.speechEngine.stopListening();
+        if (this.summaryModal) this.summaryModal.style.display = 'none';
         this.showView(targetView);
     }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    new StageCueApp();
+    const app = new StageCueApp();
+
+    // Modal button listeners
+    if (app.btnModalRestart) {
+        app.btnModalRestart.addEventListener('click', () => {
+            if (app.summaryModal) app.summaryModal.style.display = 'none';
+            app.startRehearsal();
+        });
+    }
+    if (app.btnModalBack) {
+        app.btnModalBack.addEventListener('click', () => {
+            if (app.summaryModal) app.summaryModal.style.display = 'none';
+            app.endRehearsal('setup');
+        });
+    }
 });
