@@ -49,7 +49,11 @@ const I18N = {
         yourTurn: '¡Tu Turno! Di tu diálogo...',
         matched: '¡Correcto! Avanzando...',
         listening: 'Escuchando tu voz...',
-        defaultVoice: 'Voz predeterminada del sistema'
+        defaultVoice: 'Voz predeterminada del sistema',
+        genderVoice: 'Filtro de Voz / Género:',
+        allVoices: 'Todas las voces',
+        femaleVoices: 'Femenina 👧 / Female',
+        maleVoices: 'Masculina 👦 / Male'
     },
     'en-US': {
         changeScript: 'Change Script',
@@ -73,7 +77,11 @@ const I18N = {
         yourTurn: 'Your Turn! Speak your line...',
         matched: 'Matched! Good job!',
         listening: 'Listening for voice...',
-        defaultVoice: 'Default System Voice'
+        defaultVoice: 'Default System Voice',
+        genderVoice: 'Voice Filter / Gender:',
+        allVoices: 'All Voices',
+        femaleVoices: 'Female 👧',
+        maleVoices: 'Male 👦'
     }
 };
 
@@ -134,12 +142,10 @@ class StageCueApp {
     }
 
     bindEvents() {
-        // Language Switcher
         this.appLanguage.addEventListener('change', (e) => {
             this.updateLanguage(e.target.value);
         });
 
-        // Sample loading
         this.sampleDonJuan.addEventListener('click', () => {
             this.scriptText.value = SAMPLES.donJuan;
             this.appLanguage.value = 'es-ES';
@@ -161,15 +167,12 @@ class StageCueApp {
             this.updateLanguage('en-US');
         });
 
-        // Navigation & Parsing
         this.btnParseScript.addEventListener('click', () => this.handleScriptParse());
         this.btnBackToInput.addEventListener('click', () => this.showView('input'));
         this.btnResetScript.addEventListener('click', () => this.endRehearsal('input'));
 
-        // Setup & Start
         this.btnStartPlay.addEventListener('click', () => this.startRehearsal());
 
-        // Dock controls
         this.btnPlayPause.addEventListener('click', () => this.togglePause());
         this.btnRepeatLine.addEventListener('click', () => this.repeatCurrentLine());
         this.btnPromptHint.addEventListener('click', () => this.giveHint());
@@ -267,7 +270,14 @@ class StageCueApp {
 
             let optionsHtml = `<option value="">${this.t('defaultVoice')}</option>`;
             voices.forEach(v => {
-                optionsHtml += `<option value="${v.name}">${v.name} (${v.lang})</option>`;
+                const nameLower = v.name.toLowerCase();
+                let genderTag = '';
+                if (nameLower.includes('female') || nameLower.includes('helena') || nameLower.includes('sabina') || nameLower.includes('zira') || nameLower.includes('hilda') || nameLower.includes('daria') || nameLower.includes('monica') || nameLower.includes('paloma') || nameLower.includes('victoria') || nameLower.includes('laura') || nameLower.includes('samantha')) {
+                    genderTag = ' 👧 (Femenina / Female)';
+                } else if (nameLower.includes('male') || nameLower.includes('pablo') || nameLower.includes('raul') || nameLower.includes('jorge') || nameLower.includes('david') || nameLower.includes('mark') || nameLower.includes('george') || nameLower.includes('alonso')) {
+                    genderTag = ' 👦 (Masculino / Male)';
+                }
+                optionsHtml += `<option value="${v.name}">${v.name}${genderTag}</option>`;
             });
 
             item.innerHTML = `
@@ -297,7 +307,12 @@ class StageCueApp {
         this.isPaused = false;
         this.currentLineIndex = 0;
 
-        this.processCurrentLine();
+        // 1 second pause before starting play
+        setTimeout(() => {
+            if (this.rehearsalActive && !this.isPaused) {
+                this.processCurrentLine();
+            }
+        }, 1000);
     }
 
     renderTeleprompterLines() {
@@ -339,7 +354,7 @@ class StageCueApp {
             this.setTurnStatus('direction', this.currentLang.startsWith('es') ? 'Acotación de escena' : 'Stage Direction');
             setTimeout(() => {
                 if (this.rehearsalActive && !this.isPaused) {
-                    this.advanceLine();
+                    this.advanceLineWithDelay();
                 }
             }, 2000);
             return;
@@ -361,13 +376,13 @@ class StageCueApp {
                 { voiceName, lang: this.currentLang },
                 () => {
                     if (this.rehearsalActive && !this.isPaused) {
-                        this.advanceLine();
+                        this.advanceLineWithDelay();
                     }
                 },
                 (err) => {
                     console.error("TTS error, auto advancing:", err);
                     if (this.rehearsalActive && !this.isPaused) {
-                        this.advanceLine();
+                        this.advanceLineWithDelay();
                     }
                 }
             );
@@ -384,11 +399,7 @@ class StageCueApp {
                 if (this.speechEngine.checkTextMatch(result.combined, targetText)) {
                     this.speechEngine.stopListening();
                     this.setTurnStatus('listening', this.t('matched'));
-                    setTimeout(() => {
-                        if (this.rehearsalActive && !this.isPaused) {
-                            this.advanceLine();
-                        }
-                    }, 500);
+                    this.advanceLineWithDelay();
                 }
             },
             (error) => {
@@ -411,6 +422,15 @@ class StageCueApp {
     setTurnStatus(type, text) {
         this.turnIndicator.className = `turn-indicator ${type}`;
         this.turnStatusText.textContent = text;
+    }
+
+    advanceLineWithDelay(delayMs = 1200) {
+        setTimeout(() => {
+            if (this.rehearsalActive && !this.isPaused) {
+                this.currentLineIndex++;
+                this.processCurrentLine();
+            }
+        }, delayMs);
     }
 
     advanceLine() {

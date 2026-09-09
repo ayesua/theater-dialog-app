@@ -10,12 +10,6 @@ export function parseScript(rawText) {
     const parsedLines = [];
     const characterMap = new Map(); // name -> count
 
-    // Common script line patterns:
-    // 1. CHARACTER: Dialog text...
-    // 2. CHARACTER. Dialog text...
-    // 3. CHARACTER (parenthetical): Dialog text...
-    // 4. ALL CAPS NAME on its own line followed by dialog lines
-    
     const inlinePattern = /^\s*([A-Z0-9\s._'-]{2,25})\s*(?:\([^)]*\))?\s*[:.-]\s*(.+)$/i;
     const standaloneCharPattern = /^\s*([A-Z0-9\s._'-]{2,25})\s*(?:\([^)]*\))?\s*$/;
 
@@ -58,12 +52,8 @@ export function parseScript(rawText) {
         const standaloneMatch = line.match(standaloneCharPattern);
         if (standaloneMatch && isLikelyCharacterName(standaloneMatch[1])) {
             currentCharacter = cleanCharacterName(standaloneMatch[1]);
-            if (i + 1 < rawLines.length && rawLines[i + 1].trim()) {
-                if (!characterMap.has(currentCharacter)) {
-                    characterMap.set(currentCharacter, 0);
-                }
-                continue;
-            }
+            characterMap.set(currentCharacter, characterMap.get(currentCharacter) || 0);
+            continue; // Header line only, dialog follows on next line(s)
         }
 
         if (currentCharacter) {
