@@ -51,9 +51,9 @@ const I18N = {
         listening: 'Escuchando tu voz...',
         defaultVoice: 'Voz predeterminada del sistema',
         genderVoice: 'Filtro de Voz / Género:',
-        allVoices: 'Todas las voces',
-        femaleVoices: 'Femenina 👧 / Female',
-        maleVoices: 'Masculina 👦 / Male'
+        modeNormal: 'Modo Lectura Guion',
+        modeBlind: 'Modo Memoria / Ocultar Mi Línea',
+        speedLabel: 'Velocidad Lectura IA:'
     },
     'en-US': {
         changeScript: 'Change Script',
@@ -79,9 +79,9 @@ const I18N = {
         listening: 'Listening for voice...',
         defaultVoice: 'Default System Voice',
         genderVoice: 'Voice Filter / Gender:',
-        allVoices: 'All Voices',
-        femaleVoices: 'Female 👧',
-        maleVoices: 'Male 👦'
+        modeNormal: 'Normal Script Mode',
+        modeBlind: 'Memory / Hide My Line Mode',
+        speedLabel: 'AI Speech Speed:'
     }
 };
 
@@ -92,6 +92,8 @@ class StageCueApp {
         this.selectedUserCharacter = null;
         this.voiceAssignments = {}; 
         this.currentLang = 'es-ES';
+        this.isBlindMode = false;
+        this.speechRate = 1.0;
 
         // Rehearsal state
         this.currentLineIndex = -1;
@@ -118,6 +120,12 @@ class StageCueApp {
         this.voiceAssignmentList = document.getElementById('voiceAssignmentList');
         this.btnStartPlay = document.getElementById('btnStartPlay');
         this.btnBackToInput = document.getElementById('btnBackToInput');
+
+        // Mode chips & sliders
+        this.chipNormalMode = document.getElementById('chipNormalMode');
+        this.chipBlindMode = document.getElementById('chipBlindMode');
+        this.speechSpeed = document.getElementById('speechSpeed');
+        this.speedVal = document.getElementById('speedVal');
 
         // Samples
         this.sampleDonJuan = document.getElementById('sampleDonJuan');
@@ -146,6 +154,25 @@ class StageCueApp {
             this.updateLanguage(e.target.value);
         });
 
+        // Mode toggles
+        this.chipNormalMode.addEventListener('click', () => {
+            this.isBlindMode = false;
+            this.chipNormalMode.classList.add('active');
+            this.chipBlindMode.classList.remove('active');
+        });
+        this.chipBlindMode.addEventListener('click', () => {
+            this.isBlindMode = true;
+            this.chipBlindMode.classList.add('active');
+            this.chipNormalMode.classList.remove('active');
+        });
+
+        // Speed slider
+        this.speechSpeed.addEventListener('input', (e) => {
+            this.speechRate = parseFloat(e.target.value);
+            this.speedVal.textContent = `${this.speechRate.toFixed(1)}x`;
+        });
+
+        // Samples
         this.sampleDonJuan.addEventListener('click', () => {
             this.scriptText.value = SAMPLES.donJuan;
             this.appLanguage.value = 'es-ES';
@@ -307,7 +334,6 @@ class StageCueApp {
         this.isPaused = false;
         this.currentLineIndex = 0;
 
-        // 1 second pause before starting play
         setTimeout(() => {
             if (this.rehearsalActive && !this.isPaused) {
                 this.processCurrentLine();
@@ -320,7 +346,8 @@ class StageCueApp {
         this.parsedData.lines.forEach((lineObj, idx) => {
             const isUser = lineObj.character === this.selectedUserCharacter;
             const lineCard = document.createElement('div');
-            lineCard.className = `line-card ${lineObj.type === 'direction' ? 'direction' : (isUser ? 'user-role' : 'computer-role')}`;
+            const blindClass = (isUser && this.isBlindMode) ? 'blind-mode' : '';
+            lineCard.className = `line-card ${lineObj.type === 'direction' ? 'direction' : (isUser ? 'user-role' : 'computer-role')} ${blindClass}`;
             lineCard.id = `line-${idx}`;
 
             if (lineObj.type === 'direction') {
@@ -333,6 +360,13 @@ class StageCueApp {
                     <div class="line-body">${lineObj.text}</div>
                 `;
             }
+
+            // Click to reveal line in blind mode
+            lineCard.addEventListener('click', () => {
+                if (lineCard.classList.contains('blind-mode')) {
+                    lineCard.classList.toggle('revealed');
+                }
+            });
 
             this.scriptDisplay.appendChild(lineCard);
         });
@@ -373,7 +407,7 @@ class StageCueApp {
             const voiceName = this.voiceAssignments[lineObj.character];
             this.speechEngine.speak(
                 lineObj.text,
-                { voiceName, lang: this.currentLang },
+                { voiceName, lang: this.currentLang, rate: this.speechRate },
                 () => {
                     if (this.rehearsalActive && !this.isPaused) {
                         this.advanceLineWithDelay();
