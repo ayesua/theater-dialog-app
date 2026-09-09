@@ -386,8 +386,44 @@ class StageCueApp {
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const content = await page.getTextContent();
-            const pageText = content.items.map(item => item.str).join(' ');
-            fullText += pageText + '\n';
+            
+            // Group items into lines based on their vertical Y position
+            const items = content.items;
+            if (!items || items.length === 0) continue;
+
+            // Sort items by Y descending (top to bottom), then X ascending (left to right)
+            items.sort((a, b) => {
+                const yA = a.transform ? a.transform[5] : 0;
+                const yB = b.transform ? b.transform[5] : 0;
+                if (Math.abs(yA - yB) > 4) {
+                    return yB - yA; // top to bottom
+                }
+                const xA = a.transform ? a.transform[4] : 0;
+                const xB = b.transform ? b.transform[4] : 0;
+                return xA - xB; // left to right
+            });
+
+            let pageLines = [];
+            let currentLine = '';
+            let lastY = null;
+
+            for (const item of items) {
+                const y = item.transform ? item.transform[5] : 0;
+                if (lastY === null || Math.abs(y - lastY) <= 4) {
+                    currentLine += (currentLine ? ' ' : '') + item.str;
+                } else {
+                    if (currentLine.trim()) {
+                        pageLines.push(currentLine.trim());
+                    }
+                    currentLine = item.str;
+                }
+                lastY = y;
+            }
+            if (currentLine.trim()) {
+                pageLines.push(currentLine.trim());
+            }
+
+            fullText += pageLines.join('\n') + '\n\n';
         }
         return fullText;
     }
@@ -481,9 +517,44 @@ class StageCueApp {
         this.voiceAssignmentList.innerHTML = '';
         const voices = this.speechEngine.getVoices(this.currentLang);
 
+        const femaleNamesList = ['lydia', 'bárbara', 'barbara', 'delia', 'inés', 'ines', 'juliet', 'julieta', 'adela', 'martirio', 'bernarba', 'bernarda', 'maxine', 'señorita argentina', 'senorita argentina', 'juno', 'niña exploradora', 'nina exploradora', 'vecina', 'chica de la tostadora'];
+        const maleNamesList = ['beetlejuice', 'adam', 'charles', 'otho', 'maxi dean', 'maxie dean', 'romeo', 'don juan', 'sacerdote', 'abogado', 'pizzero', 'repartidor', 'agente del censo', 'mudancero', 'infiel', 'jinete'];
+
         this.parsedData.characters.forEach(char => {
             const item = document.createElement('div');
             item.className = 'voice-item';
+
+            const charLower = char.name.toLowerCase();
+            const isCharacterFemale = femaleNamesList.some(fn => charLower.includes(fn));
+            const isCharacterMale = maleNamesList.some(mn => charLower.includes(mn));
+
+            // Find best default voice: prioritize Natural + gender match
+            let recommendedVoiceName = '';
+            for (const v of voices) {
+                const vLower = v.name.toLowerCase();
+                const isVoiceNatural = /natural|neural|online|google|microsoft/i.test(v.name);
+                const isVoiceFemale = ['female', 'daria', 'paloma', 'catalina', 'esmeralda', 'salome', 'jimena', 'marta', 'sofia', 'carmen', 'lucia', 'elena', 'camila', 'lorena', 'renata', 'silvia', 'yolanda', 'helena', 'sabina', 'zira', 'hilda', 'monica', 'victoria', 'laura', 'samantha', 'jenny', 'aria', 'ana'].some(kw => vLower.includes(kw));
+                const isVoiceMale = ['male', 'pablo', 'raul', 'jorge', 'david', 'mark', 'george', 'alonso', 'alvaro', 'mateo', 'tomas', 'nicolas', 'gonzalo', 'guillermo', 'justin', 'guy', 'ryan', 'stefan'].some(kw => vLower.includes(kw));
+
+                if (isCharacterFemale && isVoiceFemale && isVoiceNatural) {
+                    recommendedVoiceName = v.name;
+                    break;
+                } else if (isCharacterMale && isVoiceMale && isVoiceNatural) {
+                    recommendedVoiceName = v.name;
+                    break;
+                }
+            }
+
+            // Fallback to first natural voice if no strict gender match
+            if (!recommendedVoiceName) {
+                const firstNat = voices.find(v => /natural|neural|online|google|microsoft/i.test(v.name));
+                if (firstNat) recommendedVoiceName = firstNat.name;
+            }
+
+            // Save default selection if not already chosen
+            if (!this.voiceAssignments[char.name]) {
+                this.voiceAssignments[char.name] = recommendedVoiceName || '';
+            }
 
             let optionsHtml = `<option value="">${this.t('defaultVoice')}</option>`;
             voices.forEach(v => {
@@ -503,11 +574,14 @@ class StageCueApp {
                     naturalTag = ' 🌟 [Fluida / Natural]';
                 }
 
-                optionsHtml += `<option value="${v.name}">${v.name}${naturalTag}${genderTag}</option>`;
+                const isSelected = this.voiceAssignments[char.name] === v.name ? 'selected' : '';
+                optionsHtml += `<option value="${v.name}" ${isSelected}>${v.name}${naturalTag}${genderTag}</option>`;
             });
 
+            const charRoleTag = isCharacterFemale ? ' 👧' : (isCharacterMale ? ' 👦' : '');
+
             item.innerHTML = `
-                <label>${this.currentLang.startsWith('es') ? 'Voz para' : 'Voice for'} ${char.name}</label>
+                <label>${this.currentLang.startsWith('es') ? 'Voz para' : 'Voice for'} <strong>${char.name}${charRoleTag}</strong></label>
                 <select data-char="${char.name}">
                     ${optionsHtml}
                 </select>
