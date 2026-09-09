@@ -1,5 +1,6 @@
 import { parseScript } from './script-parser.js';
 import { SpeechEngine } from './speech-engine.js';
+import { BEETLEJUICE_SAMPLE } from './beetlejuice-sample.js';
 
 // Configure PDF.js worker
 if (window.pdfjsLib) {
@@ -175,6 +176,7 @@ class StageCueApp {
         this.speedVal = document.getElementById('speedVal');
 
         // Samples
+        this.sampleBeetlejuice = document.getElementById('sampleBeetlejuice');
         this.sampleDonJuan = document.getElementById('sampleDonJuan');
         this.sampleCasaBernarda = document.getElementById('sampleCasaBernarda');
         this.sampleRomeo = document.getElementById('sampleRomeo');
@@ -242,6 +244,13 @@ class StageCueApp {
         });
 
         // Samples
+        if (this.sampleBeetlejuice) {
+            this.sampleBeetlejuice.addEventListener('click', () => {
+                this.scriptText.value = BEETLEJUICE_SAMPLE;
+                this.appLanguage.value = 'es-ES';
+                this.updateLanguage('es-ES');
+            });
+        }
         this.sampleDonJuan.addEventListener('click', () => {
             this.scriptText.value = SAMPLES.donJuan;
             this.appLanguage.value = 'es-ES';

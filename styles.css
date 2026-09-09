@@ -404,6 +404,19 @@ textarea#scriptText:focus {
     border-color: var(--primary);
 }
 
+#sampleBeetlejuice {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35));
+    border-color: rgba(168, 85, 247, 0.5);
+    color: #f8fafc;
+    font-weight: 700;
+}
+
+#sampleBeetlejuice:hover {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-color: var(--secondary);
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.5);
+}
+
 .btn {
     display: inline-flex;
     align-items: center;
