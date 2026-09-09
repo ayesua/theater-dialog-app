@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StageCue - Ensayo de Diálogos Teatrales / Theater Dialog Rehearsal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-masks-theater"></i>
+                <span>StageCue</span>
+            </div>
+            
+            <div class="header-controls">
+                <div class="lang-selector">
+                    <i class="fa-solid fa-language"></i>
+                    <select id="appLanguage">
+                        <option value="es-ES" selected>Español (Spanish)</option>
+                        <option value="en-US">English (Inglés)</option>
+                    </select>
+                </div>
+                <div class="header-actions" id="headerActions" style="display: none;">
+                    <button id="btnResetScript" class="btn secondary-btn">
+                        <i class="fa-solid fa-arrow-left"></i> <span data-i18n="changeScript">Cambiar Guion</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- STEP 1: Script Input View -->
+        <main id="viewScriptInput" class="view-panel active">
+            <div class="panel-card">
+                <h2><i class="fa-solid fa-file-pen"></i> <span data-i18n="inputTitle">Ingresa tu Guion Teatral</span></h2>
+                <p class="subtitle" data-i18n="inputSubtitle">Pega el texto de la obra. StageCue detectará automáticamente los personajes y diálogos.</p>
+
+                <div class="sample-scripts">
+                    <span><i class="fa-solid fa-book-open"></i> <span data-i18n="loadSample">Cargar ejemplo:</span></span>
+                    <button class="chip-btn" id="sampleDonJuan">Don Juan Tenorio (Español)</button>
+                    <button class="chip-btn" id="sampleCasaBernarda">La Casa de Bernarda Alba (Español)</button>
+                    <button class="chip-btn" id="sampleRomeo">Romeo & Juliet (English)</button>
+                    <button class="chip-btn" id="sampleComedy">Modern Comedy (English)</button>
+                </div>
+
+                <div class="form-group">
+                    <textarea id="scriptText" placeholder="DON JUAN: ¿No es verdad, ángel de amor, que en esta apartada orilla...&#10;DOÑA INÉS: Calla, por dios, oh Don Juan!&#10;DON JUAN: Jamás volveré a callar..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button id="btnParseScript" class="btn primary-btn btn-lg">
+                        <i class="fa-solid fa-magnifying-glass-chart"></i> <span data-i18n="analyzeBtn">Analizar Guion y Detectar Personajes</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- STEP 2: Character & Setup View -->
+        <main id="viewSetup" class="view-panel">
+            <div class="panel-card">
+                <h2><i class="fa-solid fa-user-check"></i> <span data-i18n="chooseCharTitle">Elige tu Personaje</span></h2>
+                <p class="subtitle" data-i18n="chooseCharSubtitle">Selecciona el personaje que vas a ensayar. La voz sintetizada (IA) leerá los demás personajes.</p>
+
+                <div class="setup-grid">
+                    <div class="setup-section">
+                        <h3><i class="fa-solid fa-masks-theater"></i> <span data-i18n="detectedChars">Personajes Detectados</span></h3>
+                        <div id="characterList" class="character-selection-list">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="setup-section">
+                        <h3><i class="fa-solid fa-sliders"></i> <span data-i18n="voiceSettings">Configurar Voces de los Demás Personajes</span></h3>
+                        <div id="voiceAssignmentList" class="voice-assignment-list">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions space-between">
+                    <button id="btnBackToInput" class="btn secondary-btn">
+                        <i class="fa-solid fa-chevron-left"></i> <span data-i18n="backBtn">Volver al Guion</span>
+                    </button>
+                    <button id="btnStartPlay" class="btn primary-btn btn-lg" disabled>
+                        <i class="fa-solid fa-play"></i> <span data-i18n="startBtn">¡Comenzar Ensayo!</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- STEP 3: Live Rehearsal Teleprompter View -->
+        <main id="viewRehearsal" class="view-panel">
+            <div class="rehearsal-layout">
+                <!-- Status bar -->
+                <div class="status-bar">
+                    <div class="current-role-badge">
+                        <span data-i18n="practicingAs">Ensayando como:</span>
+                        <strong id="userRoleBadge">PERSONAJE</strong>
+                    </div>
+                    <div class="turn-indicator" id="turnIndicator">
+                        <span class="pulse-dot"></span>
+                        <span id="turnStatusText">Esperando...</span>
+                    </div>
+                    <div class="audio-feedback" id="audioFeedback">
+                        <i class="fa-solid fa-microphone"></i>
+                        <span id="transcriptLive">Escuchando voz...</span>
+                    </div>
+                </div>
+
+                <!-- Teleprompter Container -->
+                <div class="teleprompter-container" id="teleprompter">
+                    <div class="teleprompter-content" id="scriptDisplay">
+                        <!-- Script lines rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Live Control Dock -->
+                <div class="control-dock">
+                    <button id="btnPlayPause" class="dock-btn primary">
+                        <i class="fa-solid fa-pause"></i>
+                        <span data-i18n="pauseBtn">Pausar</span>
+                    </button>
+                    <button id="btnRepeatLine" class="dock-btn">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span data-i18n="repeatBtn">Repetir Línea</span>
+                    </button>
+                    <button id="btnPromptHint" class="dock-btn warning">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span data-i18n="hintBtn">Dar Pista</span>
+                    </button>
+                    <button id="btnSkipLine" class="dock-btn accent">
+                        <i class="fa-solid fa-forward-step"></i>
+                        <span data-i18n="skipBtn">Saltar Línea</span>
+                    </button>
+                    <button id="btnEndRehearsal" class="dock-btn danger">
+                        <i class="fa-solid fa-stop"></i>
+                        <span data-i18n="endBtn">Terminar</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
