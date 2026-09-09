@@ -386,9 +386,12 @@ class StageCueApp {
             voices.forEach(v => {
                 const nameLower = v.name.toLowerCase();
                 let genderTag = '';
-                if (nameLower.includes('female') || nameLower.includes('helena') || nameLower.includes('sabina') || nameLower.includes('zira') || nameLower.includes('hilda') || nameLower.includes('daria') || nameLower.includes('monica') || nameLower.includes('paloma') || nameLower.includes('victoria') || nameLower.includes('laura') || nameLower.includes('samantha')) {
+                const femaleKeywords = ['female', 'helena', 'sabina', 'zira', 'hilda', 'daria', 'monica', 'paloma', 'victoria', 'laura', 'samantha', 'mia', 'esmeralda', 'salome', 'jimena', 'marta', 'sofia', 'carmen', 'lucia', 'elena', 'camila', 'lorena', 'renata', 'silvia', 'yolanda', 'catalina', 'jenny', 'aria', 'ana'];
+                const maleKeywords = ['male', 'pablo', 'raul', 'jorge', 'david', 'mark', 'george', 'alonso', 'alvaro', 'mateo', 'tomas', 'nicolas', 'gonzalo', 'guillermo', 'justin', 'guy', 'ryan', 'stefan'];
+
+                if (femaleKeywords.some(kw => nameLower.includes(kw))) {
                     genderTag = ' 👧 (Femenina / Female)';
-                } else if (nameLower.includes('male') || nameLower.includes('pablo') || nameLower.includes('raul') || nameLower.includes('jorge') || nameLower.includes('david') || nameLower.includes('mark') || nameLower.includes('george') || nameLower.includes('alonso')) {
+                } else if (maleKeywords.some(kw => nameLower.includes(kw))) {
                     genderTag = ' 👦 (Masculino / Male)';
                 }
 
