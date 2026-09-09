@@ -36,12 +36,22 @@ export class SpeechEngine {
         if (!this.voices.length && this.synth) {
             this.voices = this.synth.getVoices();
         }
+        
+        let pool = this.voices;
         if (filterLang) {
             const prefix = filterLang.split('-')[0].toLowerCase();
             const filtered = this.voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
-            return filtered.length > 0 ? filtered : this.voices;
+            if (filtered.length > 0) pool = filtered;
         }
-        return this.voices;
+
+        // Sort pool so Natural / Neural high quality voices appear first
+        return pool.sort((a, b) => {
+            const isANatural = /natural|neural|online|google|microsoft/i.test(a.name);
+            const isBNatural = /natural|neural|online|google|microsoft/i.test(b.name);
+            if (isANatural && !isBNatural) return -1;
+            if (!isANatural && isBNatural) return 1;
+            return a.name.localeCompare(b.name);
+        });
     }
 
     speak(text, voiceConfig = {}, onEnd, onError) {
@@ -64,10 +74,15 @@ export class SpeechEngine {
             const selectedVoice = this.voices.find(v => v.name === voiceConfig.voiceName);
             if (selectedVoice) utterance.voice = selectedVoice;
         } else {
-            // Auto pick best matching voice for current language
+            // Auto pick best matching voice for current language (prefer Natural/Neural)
             const prefix = utterance.lang.split('-')[0].toLowerCase();
-            const matchingVoice = this.voices.find(v => v.lang.toLowerCase().startsWith(prefix));
-            if (matchingVoice) utterance.voice = matchingVoice;
+            const langVoices = this.voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
+            const naturalVoice = langVoices.find(v => /natural|neural|online|google|microsoft/i.test(v.name));
+            if (naturalVoice) {
+                utterance.voice = naturalVoice;
+            } else if (langVoices.length > 0) {
+                utterance.voice = langVoices[0];
+            }
         }
 
         utterance.onend = () => {
@@ -165,7 +180,7 @@ export class SpeechEngine {
     /**
      * Compare user spoken text with target line text using fuzzy similarity
      */
-    checkTextMatch(spoken, target, similarityThreshold = 0.50) {
+    checkTextMatch(spoken, target, similarityThreshold = 0.45) {
         if (!spoken || !target) return false;
 
         const normalize = (str) => {

@@ -6,6 +6,8 @@
     <title>StageCue - Ensayo de Diálogos Teatrales / Theater Dialog Rehearsal</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js for client-side PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -36,10 +38,23 @@
         <main id="viewScriptInput" class="view-panel active">
             <div class="panel-card">
                 <h2><i class="fa-solid fa-file-pen"></i> <span data-i18n="inputTitle">Ingresa tu Guion Teatral</span></h2>
-                <p class="subtitle" data-i18n="inputSubtitle">Pega el texto de la obra. StageCue detectará automáticamente los personajes y diálogos.</p>
+                <p class="subtitle" data-i18n="inputSubtitle">Pega el texto de la obra o sube un archivo (.pdf, .txt, .docx). StageCue detectará automáticamente los personajes.</p>
+
+                <!-- File Upload Box -->
+                <div class="file-upload-container">
+                    <label for="fileInput" class="file-upload-box" id="dropZone">
+                        <i class="fa-solid fa-cloud-arrow-up icon-upload"></i>
+                        <div class="upload-text">
+                            <strong><span data-i18n="uploadPrompt">Haz clic para subir un archivo</span></strong> <span data-i18n="uploadOrDrag">o arrastra aquí</span>
+                        </div>
+                        <span class="file-types">PDF, TXT, DOCX</span>
+                    </label>
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.docx" style="display: none;">
+                    <div id="fileStatus" class="file-status" style="display: none;"></div>
+                </div>
 
                 <div class="sample-scripts">
-                    <span><i class="fa-solid fa-book-open"></i> <span data-i18n="loadSample">Cargar ejemplo:</span></span>
+                    <span><i class="fa-solid fa-book-open"></i> <span data-i18n="loadSample">O carga un ejemplo:</span></span>
                     <button class="chip-btn" id="sampleDonJuan">Don Juan Tenorio (Español)</button>
                     <button class="chip-btn" id="sampleCasaBernarda">La Casa de Bernarda Alba (Español)</button>
                     <button class="chip-btn" id="sampleRomeo">Romeo & Juliet (English)</button>
@@ -89,6 +104,7 @@
 
                     <div class="setup-section">
                         <h3><i class="fa-solid fa-sliders"></i> <span data-i18n="voiceSettings">Configurar Voces de los Demás Personajes</span></h3>
+                        <p class="voice-hint-text"><i class="fa-solid fa-circle-info"></i> <span data-i18n="naturalVoiceHint">Selecciona voces clasificadas como "Natural" o "Neural" (Microsoft/Google) para obtener la mayor fluidez humana.</span></p>
                         <div id="voiceAssignmentList" class="voice-assignment-list">
                             <!-- Injected dynamically -->
                         </div>

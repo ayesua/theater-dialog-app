@@ -1,7 +1,11 @@
 import { parseScript } from './script-parser.js';
 import { SpeechEngine } from './speech-engine.js';
 
-// Sample scripts in Spanish and English
+// Configure PDF.js worker
+if (window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 const SAMPLES = {
     donJuan: `DON JUAN: ¿No es verdad, ángel de amor, que en esta apartada orilla más pura la luna brilla y se respira mejor?
 DOÑA INÉS: Calla, por Dios, ¡oh, Don Juan!, que no podré resistir mucho tiempo sin morir tan nunca visto tormento.
@@ -30,13 +34,16 @@ const I18N = {
     'es-ES': {
         changeScript: 'Cambiar Guion',
         inputTitle: 'Ingresa tu Guion Teatral',
-        inputSubtitle: 'Pega el texto de la obra. StageCue detectará automáticamente los personajes y diálogos.',
-        loadSample: 'Cargar ejemplo:',
+        inputSubtitle: 'Pega el texto de la obra o sube un archivo (.pdf, .txt, .docx). StageCue detectará automáticamente los personajes.',
+        uploadPrompt: 'Haz clic para subir un archivo',
+        uploadOrDrag: 'o arrástralo aquí',
+        loadSample: 'O carga un ejemplo:',
         analyzeBtn: 'Analizar Guion y Detectar Personajes',
         chooseCharTitle: 'Elige tu Personaje',
         chooseCharSubtitle: 'Selecciona el personaje que vas a ensayar. La voz sintetizada (IA) leerá los demás personajes.',
         detectedChars: 'Personajes Detectados',
         voiceSettings: 'Configurar Voces de los Demás Personajes',
+        naturalVoiceHint: 'Selecciona voces con la etiqueta 🌟 (Natural / Neural) para obtener la mayor fluidez humana.',
         backBtn: 'Volver al Guion',
         startBtn: '¡Comenzar Ensayo!',
         practicingAs: 'Ensayando como:',
@@ -58,13 +65,16 @@ const I18N = {
     'en-US': {
         changeScript: 'Change Script',
         inputTitle: 'Enter Your Play Script',
-        inputSubtitle: 'Paste your theater script below. StageCue will automatically detect characters and dialog lines.',
-        loadSample: 'Load sample:',
+        inputSubtitle: 'Paste your script or upload a file (.pdf, .txt, .docx). StageCue will automatically detect characters.',
+        uploadPrompt: 'Click to upload a file',
+        uploadOrDrag: 'or drag and drop here',
+        loadSample: 'Or load a sample:',
         analyzeBtn: 'Analyze Script & Detect Characters',
         chooseCharTitle: 'Choose Your Character',
         chooseCharSubtitle: 'Select the character you want to practice. The AI will read all other roles!',
         detectedChars: 'Detected Characters',
         voiceSettings: 'Voice Settings for Other Roles',
+        naturalVoiceHint: 'Select voices tagged with 🌟 (Natural / Neural) for the most human-like fluency.',
         backBtn: 'Back to Script',
         startBtn: 'Start Rehearsal!',
         practicingAs: 'Practicing as:',
@@ -112,6 +122,11 @@ class StageCueApp {
         this.viewRehearsal = document.getElementById('viewRehearsal');
         this.headerActions = document.getElementById('headerActions');
 
+        // Upload DOM
+        this.fileInput = document.getElementById('fileInput');
+        this.dropZone = document.getElementById('dropZone');
+        this.fileStatus = document.getElementById('fileStatus');
+
         this.scriptText = document.getElementById('scriptText');
         this.btnParseScript = document.getElementById('btnParseScript');
         this.btnResetScript = document.getElementById('btnResetScript');
@@ -152,6 +167,28 @@ class StageCueApp {
     bindEvents() {
         this.appLanguage.addEventListener('change', (e) => {
             this.updateLanguage(e.target.value);
+        });
+
+        // File upload event listeners
+        this.fileInput.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0]));
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            this.dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                this.dropZone.classList.add('drag-over');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            this.dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                this.dropZone.classList.remove('drag-over');
+            });
+        });
+        this.dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFileUpload(files[0]);
+            }
         });
 
         // Mode toggles
@@ -207,6 +244,56 @@ class StageCueApp {
         this.btnEndRehearsal.addEventListener('click', () => this.endRehearsal());
     }
 
+    async handleFileUpload(file) {
+        if (!file) return;
+
+        this.fileStatus.style.display = 'block';
+        this.fileStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Reading ${file.name}...`;
+
+        try {
+            let extractedText = '';
+            const extension = file.name.split('.').pop().toLowerCase();
+
+            if (extension === 'txt') {
+                extractedText = await file.text();
+            } else if (extension === 'pdf') {
+                extractedText = await this.readPdfFile(file);
+            } else if (extension === 'docx') {
+                // Read text stream from docx/plain
+                extractedText = await file.text();
+            } else {
+                throw new Error("Formato de archivo no soportado. Usa PDF, TXT o DOCX.");
+            }
+
+            if (extractedText && extractedText.trim()) {
+                this.scriptText.value = extractedText;
+                this.fileStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--success)"></i> ${file.name} cargado correctamente!`;
+            } else {
+                throw new Error("No se pudo extraer texto del archivo.");
+            }
+        } catch (err) {
+            console.error("File upload error:", err);
+            this.fileStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation" style="color:var(--danger)"></i> Error: ${err.message}`;
+        }
+    }
+
+    async readPdfFile(file) {
+        if (!window.pdfjsLib) {
+            throw new Error("PDF parser loading... intenta de nuevo en unos segundos.");
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const pageText = content.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+        }
+        return fullText;
+    }
+
     updateLanguage(langCode) {
         this.currentLang = langCode;
         this.speechEngine.setLanguage(langCode);
@@ -248,7 +335,7 @@ class StageCueApp {
     handleScriptParse() {
         const text = this.scriptText.value;
         if (!text || !text.trim()) {
-            alert(this.currentLang.startsWith('es') ? '¡Por favor ingresa o pega el texto del guion!' : 'Please paste or enter script text first!');
+            alert(this.currentLang.startsWith('es') ? '¡Por favor ingresa o sube el texto del guion!' : 'Please paste or upload script text first!');
             return;
         }
 
@@ -304,7 +391,13 @@ class StageCueApp {
                 } else if (nameLower.includes('male') || nameLower.includes('pablo') || nameLower.includes('raul') || nameLower.includes('jorge') || nameLower.includes('david') || nameLower.includes('mark') || nameLower.includes('george') || nameLower.includes('alonso')) {
                     genderTag = ' 👦 (Masculino / Male)';
                 }
-                optionsHtml += `<option value="${v.name}">${v.name}${genderTag}</option>`;
+
+                let naturalTag = '';
+                if (/natural|neural|online|google|microsoft/i.test(v.name)) {
+                    naturalTag = ' 🌟 [Fluida / Natural]';
+                }
+
+                optionsHtml += `<option value="${v.name}">${v.name}${naturalTag}${genderTag}</option>`;
             });
 
             item.innerHTML = `
@@ -361,7 +454,6 @@ class StageCueApp {
                 `;
             }
 
-            // Click to reveal line in blind mode
             lineCard.addEventListener('click', () => {
                 if (lineCard.classList.contains('blind-mode')) {
                     lineCard.classList.toggle('revealed');
